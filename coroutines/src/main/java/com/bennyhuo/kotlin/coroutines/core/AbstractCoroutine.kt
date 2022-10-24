@@ -12,23 +12,18 @@ import kotlin.coroutines.resume
 
 abstract class AbstractCoroutine<T>(context: CoroutineContext) : Job, Continuation<T>, CoroutineScope {
 
-    protected val state = AtomicReference<CoroutineState>()
+    protected val state = AtomicReference<CoroutineState>().apply {
+        set(CoroutineState.InComplete())
+    }
 
-    override val context: CoroutineContext
+    override val context: CoroutineContext = context + this
 
     override val scopeContext: CoroutineContext
         get() = context
 
     protected val parentJob = context[Job]
 
-    private var parentCancelDisposable: Disposable? = null
-
-    init {
-        state.set(CoroutineState.InComplete())
-        this.context = context + this
-
-        parentCancelDisposable = parentJob?.attachChild(this)
-    }
+    private var parentCancelDisposable: Disposable? = parentJob?.attachChild(this)
 
     val isCompleted
         get() = state.get() is CoroutineState.Complete<*>
@@ -40,8 +35,12 @@ abstract class AbstractCoroutine<T>(context: CoroutineContext) : Job, Continuati
             is CoroutineState.CompleteWaitForChildren<*> -> !currentState.isCancelling
             is CoroutineState.InComplete -> true
         }
-
+    
+    /**
+     * 协程结束时的回调
+     */
     override fun resumeWith(result: Result<T>) {
+        println("result: $result")
         val newState = state.updateAndGet { prevState ->
             when (prevState) {
                 //although cancelled, flows of job may work out with the normal result.
@@ -152,6 +151,8 @@ abstract class AbstractCoroutine<T>(context: CoroutineContext) : Job, Continuati
                 is CoroutineState.CompleteWaitForChildren<*> -> prev.copy().with(disposable)
             }
         }
+        
+        // 这里是已经完成了时的回调
         (newState as? CoroutineState.Complete<T>)?.let {
             block(
                     when {
