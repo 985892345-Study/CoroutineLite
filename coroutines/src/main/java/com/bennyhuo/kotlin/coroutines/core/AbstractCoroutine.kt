@@ -89,7 +89,8 @@ abstract class AbstractCoroutine<T>(context: CoroutineContext) : Job, Continuati
         }
 
         /**
-         * 传递协程异常出来，并不算是抛出异常，因为协程遇到异常时
+         * 分发协程异常
+         * 这里并不是抛出异常！
          */
         result.exceptionOrNull()?.let(this::tryHandleException)
 
