@@ -16,6 +16,9 @@ abstract class AbstractCoroutine<T>(context: CoroutineContext) : Job, Continuati
         set(CoroutineState.InComplete())
     }
 
+    /**
+     * 这里比较关键，[Job.Key] 是保存在协程上下文中的键，而什么时候添加进去的？其实就是在这里添加进去的
+     */
     override val context: CoroutineContext = context + this
 
     override val scopeContext: CoroutineContext
@@ -40,7 +43,6 @@ abstract class AbstractCoroutine<T>(context: CoroutineContext) : Job, Continuati
      * 协程结束时的回调
      */
     override fun resumeWith(result: Result<T>) {
-        println("result: $result")
         val newState = state.updateAndGet { prevState ->
             when (prevState) {
                 //although cancelled, flows of job may work out with the normal result.
@@ -86,6 +88,9 @@ abstract class AbstractCoroutine<T>(context: CoroutineContext) : Job, Continuati
             Result.failure<T>(newState.exception)
         }
 
+        /**
+         * 传递协程异常出来，并不算是抛出异常，因为协程遇到异常时
+         */
         result.exceptionOrNull()?.let(this::tryHandleException)
 
         newState.notifyCompletion(result)
